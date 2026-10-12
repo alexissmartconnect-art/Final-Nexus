@@ -17,6 +17,14 @@ export interface AppConfig {
   bootstrapAdmin: { email: string; password: string } | null;
   sessionTtlMs: number;
   secureCookies: boolean;
+  /** Optional custom (BYO / self-hosted proxy) provider endpoints. */
+  providers: {
+    openrouterBaseUrl?: string;
+    hfRouterBaseUrl?: string;
+    hfHubBaseUrl?: string;
+    /** Only ever true for a local/self-hosted endpoint; HTTPS-only otherwise. */
+    allowPrivate: boolean;
+  };
 }
 
 function str(v: string | undefined, fallback: string): string {
@@ -54,5 +62,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     bootstrapAdmin: bEmail && bPassword ? { email: bEmail, password: bPassword } : null,
     sessionTtlMs: Number(str(env.NEXUS_SESSION_TTL_MS, String(7 * 24 * 3600 * 1000))),
     secureCookies: nodeEnv === 'production',
+    providers: {
+      ...(env.OPENROUTER_BASE_URL ? { openrouterBaseUrl: env.OPENROUTER_BASE_URL } : {}),
+      ...(env.HF_ROUTER_BASE_URL ? { hfRouterBaseUrl: env.HF_ROUTER_BASE_URL } : {}),
+      ...(env.HF_HUB_BASE_URL ? { hfHubBaseUrl: env.HF_HUB_BASE_URL } : {}),
+      allowPrivate: env.NEXUS_ALLOW_PRIVATE_PROVIDERS === '1',
+    },
   };
 }

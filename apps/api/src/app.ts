@@ -7,6 +7,9 @@ import { createAuthGuards, registerRateLimit, registerSecurityHeaders } from './
 import { authRoutes } from './routes/auth.routes.js';
 import { metaRoutes } from './routes/meta.routes.js';
 import { credentialRoutes } from './routes/credentials.routes.js';
+import { providerRoutes } from './routes/providers.routes.js';
+import { ProviderService } from './services/provider.service.js';
+import { chatRoutes } from './routes/chat.routes.js';
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -32,6 +35,10 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
     allowedHeaders: ['content-type', 'x-csrf-token', 'x-request-id'],
   });
 
+  // Built once and decorated on the ROOT instance so routes and tests share it.
+  const providers = new ProviderService(ctx);
+  app.decorate('providers', providers);
+
   registerSecurityHeaders(app);
   registerRateLimit(app, ctx);
   registerErrorHandler(app, ctx);
@@ -41,6 +48,8 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
     await authRoutes(instance, ctx);
     await metaRoutes(instance, ctx);
     await credentialRoutes(instance, ctx);
+    await providerRoutes(instance, ctx, providers);
+    await chatRoutes(instance, ctx, providers);
   });
 
   return app;

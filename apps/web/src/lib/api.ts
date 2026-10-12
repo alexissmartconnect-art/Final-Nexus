@@ -58,6 +58,7 @@ export interface CredentialView {
 }
 
 export const client = {
+  api,
   me: () => api<MeResponse>('/api/auth/me'),
   health: () => api<HealthResponse>('/api/health'),
   capabilities: () => api<{ capabilities: Capability[] }>('/api/meta/capabilities'),

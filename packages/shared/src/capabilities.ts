@@ -104,7 +104,17 @@ export const CAPABILITIES: Capability[] = [
     notes: 'Requires a provisioned endpoint on the HF account; detected, never assumed.',
   },
 
+  {
+    key: 'openrouter.byo_endpoint', provider: 'openrouter', name: 'Custom / self-hosted endpoint override',
+    status: 'implemented', verifiedAt: '2026-10-12',
+    notes: 'OPENROUTER_BASE_URL / HF_ROUTER_BASE_URL / HF_HUB_BASE_URL. The override host must still pass the SSRF allowlist.',
+  },
+
   // ---- System ----
+  { key: 'system.model_registry', provider: 'system', name: 'Unified model registry (OpenRouter + Hugging Face)', status: 'implemented', test: 'packages/model-registry/tests/registry.test.ts', verifiedAt: '2026-10-12' },
+  { key: 'system.chat_stream', provider: 'system', name: 'Chat with SSE streaming and conversation persistence', status: 'implemented', test: 'apps/api/tests/chat.test.ts', verifiedAt: '2026-10-12' },
+  { key: 'system.cost_accounting', provider: 'system', name: 'Cost accounting (billed / estimated / free / unknown)', status: 'implemented', test: 'apps/api/tests/chat.test.ts', verifiedAt: '2026-10-12' },
+  { key: 'system.free_only_guard', provider: 'system', name: 'free_only routing never falls back to a paid model', status: 'implemented', test: 'apps/api/tests/chat.test.ts', verifiedAt: '2026-10-12' },
   { key: 'system.secret_vault', provider: 'system', name: 'AES-256-GCM secret vault', status: 'implemented', test: 'packages/security/tests/vault.test.ts', verifiedAt: '2026-10-12' },
   { key: 'system.auth', provider: 'system', name: 'Session authentication', status: 'implemented', test: 'apps/api/tests/auth.test.ts', verifiedAt: '2026-10-12' },
   { key: 'system.web_factory', provider: 'system', name: 'Universal Web Factory', status: 'planned', verifiedAt: '2026-10-12' },

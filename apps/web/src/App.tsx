@@ -4,16 +4,18 @@ import { AuthPage } from './pages/AuthPage.js';
 import { HomePage } from './pages/HomePage.js';
 import { KeysPage } from './pages/KeysPage.js';
 import { LogsPage } from './pages/LogsPage.js';
+import { ChatPage } from './pages/ChatPage.js';
+import { ModelsPage } from './pages/ModelsPage.js';
 import { Orb } from './components/Orb.js';
 
-type SectionId = 'home' | 'keys' | 'logs' | 'coming';
+type SectionId = 'home' | 'chat' | 'models' | 'keys' | 'logs' | 'coming';
 
 interface Section { id: SectionId; label: string; phase?: string; render?: () => JSX.Element; adminOnly?: boolean }
 
 const SECTIONS: Section[] = [
   { id: 'home', label: 'Accueil', render: () => <HomePage /> },
-  { id: 'coming', label: 'Chat', phase: 'Phase 1' },
-  { id: 'coming', label: 'Modèles IA', phase: 'Phase 1' },
+  { id: 'chat', label: 'Chat', render: () => <ChatPage /> },
+  { id: 'models', label: 'Modèles IA', render: () => <ModelsPage /> },
   { id: 'coming', label: 'Comparateur', phase: 'Phase 2' },
   { id: 'coming', label: 'Conseil IA', phase: 'Phase 4' },
   { id: 'coming', label: 'Agents', phase: 'Phase 3' },

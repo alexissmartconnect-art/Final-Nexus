@@ -23,7 +23,10 @@ Built from an empty repository — there is no legacy NEXUS code in here.
 | Capability registry (OpenRouter / HF) | ✅ done | `GET /api/meta/capabilities` |
 | Premium UI + WebGL orb | ✅ done | `npm run build -w @nexus/web` |
 | API boot over real TCP | ✅ done | `tests/e2e/boot.test.ts` |
-| Live model calls (OpenRouter / HF) | ⛔ Phase 1 | code not written yet |
+| OpenRouter + Hugging Face clients | ✅ Phase 1 | `tests/contracts/*.contract.test.ts` (21 tests) |
+| Unified model registry + catalogue sync | ✅ Phase 1 | `packages/model-registry/tests/registry.test.ts` |
+| Chat with SSE streaming + persistence | ✅ Phase 1 | `apps/api/tests/chat.test.ts` |
+| Cost accounting (billed/estimated/free/unknown) | ✅ Phase 1 | `apps/api/tests/chat.test.ts` |
 | Smart router, budgets, council, judge | ⛔ Phase 2-4 | reserved packages |
 | Web Factory, runner, Playwright | ⛔ Phase 5-6 | reserved packages |
 | Deployment | ⛔ Phase 7 | reserved packages |
@@ -31,7 +34,7 @@ Built from an empty repository — there is no legacy NEXUS code in here.
 `⛔` means **not implemented**. Nothing in the interface pretends otherwise: unimplemented
 sections are visible but disabled and labelled with their phase.
 
-Test suite: **71 tests, 10 files, all passing** (`npm test`).
+Test suite: **107 tests, 15 files, all passing** (`npm test`).
 
 ---
 
@@ -94,7 +97,11 @@ tests/                     cross-cutting e2e tests
 
 ## What is explicitly *not* claimed
 
-- No model call has been made from this repository yet — the provider clients are Phase 1.
+- **No live call** has been made to `openrouter.ai` or `huggingface.co` from this
+  repository: those hosts are not reachable from the build sandbox. The clients are
+  verified against a real local HTTP server implementing the documented response
+  shapes. Add a key in “Gestion des API”, hit *Synchroniser le catalogue*, and the
+  first real call happens there.
 - No build, test or deployment has been executed on a third-party service.
 - Hostinger shared hosting is **not** assumed to run Docker, a Node.js daemon or Python;
   see `docs/ARCHITECTURE.md` for the real capability assessment.
