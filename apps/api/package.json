@@ -20,7 +20,9 @@
     "fastify": "^5.4.0",
     "zod": "^3.25.76",
     "@nexus/providers": "*",
-    "@nexus/model-registry": "*"
+    "@nexus/model-registry": "*",
+    "@nexus/finops": "*",
+    "@nexus/router": "*"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

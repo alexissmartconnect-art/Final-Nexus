@@ -43,5 +43,7 @@ export async function providerRoutes(app: FastifyInstance, ctx: AppContext, svc:
 declare module 'fastify' {
   interface FastifyInstance {
     providers?: ProviderService;
+    cost?: import('@nexus/finops').CostEngine;
+    router?: import('@nexus/router').SmartRouter;
   }
 }

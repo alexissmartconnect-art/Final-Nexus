@@ -2,7 +2,7 @@
 export interface ChatStreamHandlers {
   onMeta?: (conversationId?: string) => void;
   onDelta: (text: string) => void;
-  onDone: (done: { conversationId: string; modelId: string; cost: { status: string; billedUsd: number | null; estimatedUsd: number | null }; tokensIn: number | null; tokensOut: number | null; attempts: { modelId: string; error: string }[] }) => void;
+  onDone: (done: { conversationId: string; modelId: string; cost: { status: string; billedUsd: number | null; estimatedUsd: number | null }; tokensIn: number | null; tokensOut: number | null; attempts: { modelId: string; error: string }[]; route?: string[] }) => void;
   onError: (code: string, message: string) => void;
 }
 

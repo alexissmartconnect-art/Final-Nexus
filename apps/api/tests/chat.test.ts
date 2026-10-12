@@ -100,10 +100,11 @@ describe('chat pipeline', () => {
     expect(rows[1]!.costStatus).toBe('billed');
 
     const usage = await t.app.inject({ method: 'GET', url: '/api/usage', headers: { cookie } });
-    const totals = (usage.json() as { total: { totalCalls: number; totalCostBilledUsd: number; unknownCostCalls: number } }).total;
+    const totals = usage.json() as { totalCalls: number; totalCostBilledUsd: number; unknownCostCalls: number; policies: unknown[] };
     expect(totals.totalCalls).toBeGreaterThanOrEqual(1);
     expect(totals.totalCostBilledUsd).toBeCloseTo(0.000123, 9);
     expect(totals.unknownCostCalls).toBe(0);
+    expect(Array.isArray(totals.policies)).toBe(true);
   });
 
   it('streams real SSE deltas and closes with a done event', async () => {

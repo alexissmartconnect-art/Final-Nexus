@@ -66,6 +66,7 @@ export interface UsageSummary {
   tokensIn: number;
   tokensOut: number;
   byModel: { modelId: string; calls: number; billedUsd: number; estimatedUsd: number; unknown: number }[];
+  byDay: { day: string; calls: number; usd: number }[];
 }
 
 export interface CostBreakdown {

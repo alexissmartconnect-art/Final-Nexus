@@ -1,13 +1,18 @@
 import type { FastifyInstance } from 'fastify';
-import { chatRequestSchema, NexusError, isNexusError, type PublicConversation, type PublicMessage } from '@nexus/shared';
+import { chatRequestSchema, isNexusError, routeExplainSchema, type PublicConversation, type PublicMessage } from '@nexus/shared';
 import type { AppContext } from '../context.js';
 import { parse } from '../http/errors.js';
 import { requireAuth, requireCsrf } from '../http/security.js';
 import { ChatService } from '../services/chat.service.js';
+import type { CostEngine } from '@nexus/finops';
+import type { SmartRouter } from '@nexus/router';
 import type { ProviderService } from '../services/provider.service.js';
 
-export async function chatRoutes(app: FastifyInstance, ctx: AppContext, providers: ProviderService): Promise<void> {
-  const svc = new ChatService(ctx, providers);
+export async function chatRoutes(
+  app: FastifyInstance, ctx: AppContext, providers: ProviderService,
+  router: SmartRouter, cost: CostEngine,
+): Promise<void> {
+  const svc = new ChatService(ctx, providers, router, cost);
 
   app.get('/api/conversations', async (req, reply) => {
     const a = requireAuth(req);
@@ -73,46 +78,34 @@ export async function chatRoutes(app: FastifyInstance, ctx: AppContext, provider
     }
   });
 
-  app.get('/api/usage', async (req, reply) => {
+  /** Dry run: shows which model would be chosen and why, without calling anyone. */
+  app.post('/api/router/explain', async (req, reply) => {
     const a = requireAuth(req);
-    const rows = ctx.db.prepare(`
-      SELECT model_id, COUNT(*) AS calls,
-             SUM(COALESCE(cost_billed_usd, 0)) AS billed,
-             SUM(COALESCE(cost_estimated_usd, 0)) AS estimated,
-             SUM(CASE WHEN cost_status = 'unknown' THEN 1 ELSE 0 END) AS unknown,
-             SUM(COALESCE(tokens_in, 0)) AS tokens_in,
-             SUM(COALESCE(tokens_out, 0)) AS tokens_out
-      FROM usage_records WHERE user_id = ? GROUP BY model_id ORDER BY calls DESC LIMIT 100
-    `).all(a.userId) as Record<string, unknown>[];
-
-    const total = ctx.db.prepare(`
-      SELECT COUNT(*) AS calls,
-             SUM(COALESCE(cost_billed_usd,0)) AS billed,
-             SUM(COALESCE(cost_estimated_usd,0)) AS estimated,
-             SUM(CASE WHEN cost_status='unknown' THEN 1 ELSE 0 END) AS unknown,
-             SUM(COALESCE(tokens_in,0)) AS tokens_in,
-             SUM(COALESCE(tokens_out,0)) AS tokens_out
-      FROM usage_records WHERE user_id = ?
-    `).get(a.userId) as Record<string, unknown>;
-
+    const input = parse(routeExplainSchema, req.body);
+    const models = providers.registry.list({ limit: 500 });
+    const decision = router.select(models, {
+      mode: input.routingMode, task: input.task, prompt: input.message,
+      maxOutputTokens: input.maxOutputTokens, privacy: input.privacy,
+      preferredModelId: input.modelId, chainLength: 5,
+    }, { userId: a.userId, scope: 'account' });
     return reply.send({
-      total: {
-        totalCalls: Number(total.calls ?? 0),
-        totalCostBilledUsd: Number(total.billed ?? 0),
-        totalCostEstimatedUsd: Number(total.estimated ?? 0),
-        unknownCostCalls: Number(total.unknown ?? 0),
-        tokensIn: Number(total.tokens_in ?? 0),
-        tokensOut: Number(total.tokens_out ?? 0),
-      },
-      byModel: rows.map((r) => ({
-        modelId: String(r.model_id ?? 'unknown'),
-        calls: Number(r.calls ?? 0),
-        billedUsd: Number(r.billed ?? 0),
-        estimatedUsd: Number(r.estimated ?? 0),
-        unknown: Number(r.unknown ?? 0),
-      })),
+      mode: decision.mode,
+      task: decision.task,
+      chosen: decision.chosen ? { modelId: decision.chosen.model.id, name: decision.chosen.model.name, score: decision.chosen.score, reasons: decision.chosen.reasons } : null,
+      chain: decision.chain.map((c) => ({ modelId: c.model.id, score: c.score, estimate: c.estimate })),
+      rejected: decision.rejected.slice(0, 25),
+      estimate: decision.estimate,
+      spend: decision.spend,
+      explanation: decision.explanation,
     });
   });
 
-  void NexusError;
+  app.get('/api/usage', async (req, reply) => {
+    const a = requireAuth(req);
+    return reply.send({
+      ...cost.summary(a.userId),
+      policies: cost.listPolicies(a.userId),
+    });
+  });
+
 }

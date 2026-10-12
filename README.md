@@ -27,14 +27,17 @@ Built from an empty repository — there is no legacy NEXUS code in here.
 | Unified model registry + catalogue sync | ✅ Phase 1 | `packages/model-registry/tests/registry.test.ts` |
 | Chat with SSE streaming + persistence | ✅ Phase 1 | `apps/api/tests/chat.test.ts` |
 | Cost accounting (billed/estimated/free/unknown) | ✅ Phase 1 | `apps/api/tests/chat.test.ts` |
-| Smart router, budgets, council, judge | ⛔ Phase 2-4 | reserved packages |
+| Smart Router (8 modes) + routing dry run | ✅ Phase 2 | `packages/router/tests/smart-router.test.ts` (16 tests) |
+| Cost Engine: budgets, reservation, reconciliation | ✅ Phase 2 | `packages/finops/tests/cost-engine.test.ts` (17 tests) |
+| Acceptance test 5 (budget) & 6 (429 fallback) | ✅ Phase 2 | `apps/api/tests/budget-router.test.ts` (8 tests) |
+| Council, judge, orchestrator | ⛔ Phase 3-4 | reserved packages |
 | Web Factory, runner, Playwright | ⛔ Phase 5-6 | reserved packages |
 | Deployment | ⛔ Phase 7 | reserved packages |
 
 `⛔` means **not implemented**. Nothing in the interface pretends otherwise: unimplemented
 sections are visible but disabled and labelled with their phase.
 
-Test suite: **107 tests, 15 files, all passing** (`npm test`).
+Test suite: **148 tests, 18 files, all passing** (`npm test`).
 
 ---
 

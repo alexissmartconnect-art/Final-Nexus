@@ -23,7 +23,7 @@ export function ChatPage() {
   const [routingMode, setRoutingMode] = useState('free_first');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastMeta, setLastMeta] = useState<{ modelId: string; cost: { status: string; billedUsd: number | null } } | null>(null);
+  const [lastMeta, setLastMeta] = useState<{ modelId: string; cost: { status: string; billedUsd: number | null }; route?: string[] } | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const loadConversations = useCallback(async () => {
@@ -70,7 +70,7 @@ export function ChatPage() {
         },
         onDone: (done) => {
           setConversationId(done.conversationId);
-          setLastMeta({ modelId: done.modelId, cost: done.cost });
+          setLastMeta({ modelId: done.modelId, cost: done.cost, route: done.route });
           setMessages((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
@@ -160,6 +160,14 @@ export function ChatPage() {
               Modèle : <span className="mono">{lastMeta.modelId}</span> · coût {lastMeta.cost.status}
               {lastMeta.cost.billedUsd !== null ? ` ($${lastMeta.cost.billedUsd.toFixed(6)})` : ''}
             </p>
+          )}
+          {lastMeta?.route && lastMeta.route.length > 0 && (
+            <details className="muted" style={{ marginTop: 4 }}>
+              <summary style={{ cursor: 'pointer' }}>Pourquoi ce modèle ?</summary>
+              <ul style={{ paddingLeft: 18, marginTop: 6 }}>
+                {lastMeta.route.map((line, i) => <li key={i}>{line}</li>)}
+              </ul>
+            </details>
           )}
         </div>
       </div>

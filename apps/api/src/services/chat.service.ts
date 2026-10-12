@@ -1,6 +1,8 @@
 import { NexusError, newId, now, type CostBreakdown, type PublicConversation, type PublicMessage, type RoutingMode } from '@nexus/shared';
 import type { Db } from '@nexus/db';
 import type { ChatMessage } from '@nexus/providers';
+import type { CostEngine } from '@nexus/finops';
+import type { RouteCandidate, SmartRouter, TaskKind } from '@nexus/router';
 import type { AppContext } from '../context.js';
 import type { ProviderService } from './provider.service.js';
 import { sanitizeUntrusted } from '@nexus/security';
@@ -13,6 +15,8 @@ export interface ChatInput {
   stream: boolean;
   projectId?: string;
   agent?: string;
+  task?: TaskKind;
+  privacy?: 'any' | 'no_training';
 }
 
 export interface ChatOutcome {
@@ -39,7 +43,12 @@ interface MsgRow { id: string; role: string; content: string; model_id: string |
  * never as zero.
  */
 export class ChatService {
-  constructor(private readonly ctx: AppContext, private readonly providers: ProviderService) {}
+  constructor(
+    private readonly ctx: AppContext,
+    private readonly providers: ProviderService,
+    private readonly router: SmartRouter,
+    private readonly cost: CostEngine,
+  ) {}
 
   listConversations(userId: string): PublicConversation[] {
     const rows = this.ctx.db
@@ -65,37 +74,46 @@ export class ChatService {
   }
 
   /**
-   * Choose a model for the requested mode.
-   * `free_only` never falls back to a paid model: it fails with an explicit message.
+   * Route the request through the Smart Router.
+   * A refusal is never silent: the reason and the suggested alternative are kept.
    */
-  selectModel(input: ChatInput, userId: string): { modelId: string; externalId: string; provider: 'openrouter' | 'huggingface' } {
+  route(input: ChatInput, userId: string, cleaned: string) {
     const registry = this.providers.registry;
-    if (input.modelId) {
-      const found = registry.get(input.modelId);
-      if (!found) throw new NexusError('not_found', `Unknown model ${input.modelId}`);
-      const { provider, externalId } = registry.externalIdOf(found.id);
-      return { modelId: found.id, externalId, provider };
-    }
-
-    const freeOnly = input.routingMode === 'free_only' || input.routingMode === 'free_first';
-    const candidates = registry.list({ availableOnly: true, limit: 200 });
-    if (candidates.length === 0) {
+    const models = registry.list({ limit: 500 });
+    if (models.length === 0) {
       throw new NexusError('provider_unavailable',
-        'No model has been synchronised yet. Open “Gestion des API”, add a key, then synchronise the catalogue.');
+        'No model has been synchronised yet. Open \u201cGestion des API\u201d, add a key, then synchronise the catalogue.');
     }
-    const free = candidates.filter((m) => m.pricingTier === 'free');
-    const pool = freeOnly ? free : candidates;
-    if (pool.length === 0) {
+    const decision = this.router.select(models, {
+      mode: input.routingMode,
+      task: input.task ?? 'chat',
+      prompt: cleaned,
+      maxOutputTokens: 1024,
+      privacy: input.privacy ?? 'any',
+      preferredModelId: input.modelId,
+      chainLength: input.routingMode === 'free_only' || input.modelId ? 1 : 3,
+    }, { userId, scope: 'account' });
+
+    if (!decision.chosen) {
       if (input.routingMode === 'free_only') {
         throw new NexusError('budget_exceeded',
-          'No free model is available in the synchronised catalogue. Switch routing mode or synchronise a provider that offers free models.');
+          'No free model is available in the synchronised catalogue. Switch routing mode or synchronise a provider that offers free models.',
+          { details: { rejected: decision.rejected.slice(0, 10) } });
       }
-      throw new NexusError('provider_unavailable', 'No model matched the requested routing mode.');
+      if (input.modelId) {
+        throw new NexusError('not_found', `Model ${input.modelId} is not compatible with this request.`,
+          { details: { rejected: decision.rejected.slice(0, 10) } });
+      }
+      throw new NexusError('provider_unavailable', 'No model matched the requested routing mode.',
+        { details: { rejected: decision.rejected.slice(0, 10) } });
     }
-    const picked = pool[0]!;
-    const { provider, externalId } = registry.externalIdOf(picked.id);
-    void userId;
-    return { modelId: picked.id, externalId, provider };
+    if (decision.spend && !decision.spend.allowed) {
+      throw new NexusError('budget_exceeded', decision.spend.reason, {
+        status: 402,
+        details: { policyId: decision.spend.policyId, alternative: decision.spend.alternative, remainingUsd: decision.spend.remainingUsd },
+      });
+    }
+    return decision;
   }
 
   async send(
@@ -111,13 +129,22 @@ export class ChatService {
     this.touchConversation(db, conversationId, cleanMessage);
 
     const history = this.loadHistory(db, conversationId);
-    const primary = this.selectModel(input, userId);
+    const decision = this.route(input, userId, cleanMessage);
+    const chain: { modelId: string; externalId: string; provider: 'openrouter' | 'huggingface'; candidate: RouteCandidate }[] =
+      decision.chain.map((c) => {
+        const { provider, externalId } = this.providers.registry.externalIdOf(c.model.id);
+        return { modelId: c.model.id, externalId, provider, candidate: c };
+      });
     const attempts: { modelId: string; error: string }[] = [];
-
-    const chain = this.buildFallbackChain(primary, input);
     let lastError: unknown = null;
+    let reservedUsd: number | null = null;
 
     for (const choice of chain) {
+      // Reserve before the call so a policy cannot be bypassed by an expensive answer.
+      this.cost.reserve({
+        userId, scope: 'account', estimate: choice.candidate.estimate, modelTier: choice.candidate.model.pricingTier,
+      });
+      reservedUsd = choice.candidate.estimate.usd;
       try {
         const client = this.providers.clientFor(userId, choice.provider);
         const result = input.stream
@@ -128,6 +155,8 @@ export class ChatService {
           : await client.chat({ model: choice.externalId, messages: history, temperature: 0.7, maxTokens: 1024 });
 
         const cost = costBreakdown(result.usage.billedCostUsd, result.usage.promptTokens, result.usage.completionTokens, choice.modelId, this.providers);
+        // Reconcile the reservation with what the provider actually charged.
+        this.cost.settle({ userId, scope: 'account', reservedUsd, billedUsd: result.usage.billedCostUsd });
         const messageId = this.insertMessage(db, conversationId, {
           role: 'assistant', content: result.text, modelId: choice.modelId, agent: input.agent ?? null,
           tokensIn: result.usage.promptTokens, tokensOut: result.usage.completionTokens,
@@ -139,7 +168,7 @@ export class ChatService {
           billed: cost.billedUsd, estimated: cost.estimatedUsd, status: cost.status,
           latencyMs: result.latencyMs, status2: 'ok',
         });
-        sink.onMeta?.({ modelId: choice.modelId, cost, usage: result.usage, attempts });
+        sink.onMeta?.({ modelId: choice.modelId, cost, usage: result.usage, attempts, route: decision.explanation });
 
         return {
           conversationId, messageId, modelId: choice.modelId, text: result.text,
@@ -151,6 +180,9 @@ export class ChatService {
         const message = err instanceof Error ? err.message : String(err);
         attempts.push({ modelId: choice.modelId, error: message });
         lastError = err;
+        // Release the reservation for a call that never produced output.
+        this.cost.settle({ userId, scope: 'account', reservedUsd, billedUsd: 0 });
+        reservedUsd = null;
         this.recordUsage(db, {
           userId, provider: choice.provider, modelId: choice.modelId, conversationId,
           tokensIn: null, tokensOut: null, billed: null, estimated: null, status: 'unknown',
@@ -162,18 +194,6 @@ export class ChatService {
       }
     }
     throw lastError instanceof NexusError ? lastError : new NexusError('provider_error', 'All model attempts failed');
-  }
-
-  /** free_only must not silently fall back to a paid model. */
-  private buildFallbackChain(primary: ReturnType<ChatService['selectModel']>, input: ChatInput) {
-    if (input.routingMode === 'free_only' || input.modelId) return [primary];
-    const others = this.providers.registry.list({ availableOnly: true, limit: 5 })
-      .filter((m) => m.id !== primary.modelId)
-      .map((m) => {
-        const { provider, externalId } = this.providers.registry.externalIdOf(m.id);
-        return { modelId: m.id, externalId, provider };
-      });
-    return [primary, ...others.slice(0, 2)];
   }
 
   private createConversation(userId: string, input: ChatInput): string {

@@ -51,11 +51,36 @@ the build sandbox. The clients are verified against a real local HTTP server tha
 implements the documented response shapes (`tests/contracts/*`). The first live call
 must be made with a real key to close the loop.
 
+## Phase 2 — Routing & budgets: DONE
+
+- `packages/finops` — Cost Engine: token estimation, price-based estimation,
+  budget policies (`budget_policies`), reservation **before** the call,
+  reconciliation with the provider-reported cost afterwards, per-model and per-day
+  summaries. A genuinely free call is never blocked by a USD ceiling; an unknown
+  price is never treated as free.
+- `packages/router` — Smart Router: 8 modes (free_only, free_first, economic,
+  balanced, quality, speed, manual, multi). Pipeline: task kind → required
+  capabilities → context estimate → hard filters (availability, capabilities,
+  context, privacy) → cost estimate → budget → ranking → bounded fallback chain.
+  Every rejection keeps its reason.
+- `POST /api/router/explain`: dry run that shows the choice and every rejection
+  without calling a provider or spending anything.
+- `GET/PUT /api/budgets`: policies + real consumption.
+- `GET /api/usage` now returns the shared `UsageSummary` contract plus policies.
+- UI: Budgets page (policy form, spend bar, per-model table) and a "Pourquoi ce
+  modèle ?" disclosure in the chat showing the routing trace.
+
+Acceptance criteria verified by `apps/api/tests/budget-router.test.ts` (8 tests):
+- **Test 5** — budget exhausted: paid call blocked with `402 budget_exceeded`, an
+  actionable alternative, and **zero** provider requests issued.
+- **Test 6** — provider 429: exactly 3 bounded retries on the failing model, then
+  fallback to a *capability-compatible* model, `chat.fallback` written to the audit
+  log, no infinite loop.
+
 ## Not started
 
 | Phase | Content |
 |---|---|
-| 2 | Smart router (free-first scoring), fallback policy, budgets, cost dashboard |
 | 3 | Orchestrator, task graph, agent registry, resumability |
 | 4 | AI Council, debate, Judge engine |
 | 5 | Web Factory: projects, files, runner, terminal, dependencies, build, export |

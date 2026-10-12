@@ -10,6 +10,9 @@ import { credentialRoutes } from './routes/credentials.routes.js';
 import { providerRoutes } from './routes/providers.routes.js';
 import { ProviderService } from './services/provider.service.js';
 import { chatRoutes } from './routes/chat.routes.js';
+import { budgetRoutes } from './routes/budget.routes.js';
+import { CostEngine } from '@nexus/finops';
+import { SmartRouter } from '@nexus/router';
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -37,7 +40,11 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
 
   // Built once and decorated on the ROOT instance so routes and tests share it.
   const providers = new ProviderService(ctx);
+  const cost = new CostEngine(ctx.db);
+  const router = new SmartRouter(cost);
   app.decorate('providers', providers);
+  app.decorate('cost', cost);
+  app.decorate('router', router);
 
   registerSecurityHeaders(app);
   registerRateLimit(app, ctx);
@@ -49,7 +56,8 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
     await metaRoutes(instance, ctx);
     await credentialRoutes(instance, ctx);
     await providerRoutes(instance, ctx, providers);
-    await chatRoutes(instance, ctx, providers);
+    await chatRoutes(instance, ctx, providers, router, cost);
+    await budgetRoutes(instance, ctx, cost);
   });
 
   return app;
