@@ -31,7 +31,7 @@ describe('secret redaction', () => {
   });
 
   it('redacts nested structures', () => {
-    const out = redactDeep({ log: ['ok', 'key=sk-or-v1-abcdef0123456789ABCDEF'], n: 1 }) as { log: string[] };
+    const out = redactDeep({ log: ['ok', 'key=sk-or-v1-abcdef0123456789ABCDEF'], n: 1 }) as { log: string[]; n: number };
     expect(out.log[1]).not.toContain('sk-or-v1');
     expect(out.n).toBe(1);
   });

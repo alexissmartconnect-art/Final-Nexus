@@ -9,6 +9,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: false,
+    // The sandbox preview is served from an *.e2b.app host; allow it explicitly
+    // instead of disabling the check. Override with NEXUS_WEB_ALLOWED_HOSTS.
+    allowedHosts: (process.env.NEXUS_WEB_ALLOWED_HOSTS ?? '.e2b.app,localhost,127.0.0.1').split(',').map((h) => h.trim()),
     // The browser only ever talks to this origin; the dev server proxies to the API.
     // This keeps cookies first-party and means no secret or CORS surface in the client.
     proxy: {

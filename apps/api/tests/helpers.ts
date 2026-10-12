@@ -23,6 +23,7 @@ export async function createTestApp(overrides: Partial<AppConfig> = {}): Promise
     ...loadConfig({ NEXUS_ENV: 'test', NEXUS_MASTER_KEY: 'unit-test-master-key-0123456789' }),
     ...overrides,
   };
+  void config.rootDir;
   const db = openDatabase({ file: ':memory:' });
   migrate(db, join(process.cwd(), 'database/migrations'));
   const ctx = createContext(config, db);
@@ -44,8 +45,8 @@ export function jar(): { header: string; store: Map<string, string> } {
   };
 }
 
-export function absorbCookies(res: { headers: Record<string, string | string[] | undefined> }, j: ReturnType<typeof jar>): void {
-  const raw = res.headers['set-cookie'];
+export function absorbCookies(headers: Record<string, string | string[] | undefined>, j: ReturnType<typeof jar>): void {
+  const raw = headers['set-cookie'];
   const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
   for (const c of list) {
     const [pair] = c.split(';');
@@ -70,7 +71,7 @@ export async function registerAndLogin(
     headers: { 'content-type': 'application/json' },
   });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.statusCode} ${res.body}`);
-  absorbCookies(res, j);
+  absorbCookies(res.headers as Record<string, string | string[] | undefined>, j);
   const body = res.json() as { csrfToken: string; user: { id: string; email: string; role: string } };
   return { cookie: j.header, csrf: body.csrfToken, user: body.user };
 }

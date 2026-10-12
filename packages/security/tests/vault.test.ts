@@ -30,7 +30,8 @@ describe('secret vault (AES-256-GCM)', () => {
     const v = createVault(MASTER);
     const cipher = v.encrypt('payload');
     const body = Buffer.from(cipher.slice(3), 'base64');
-    body[body.length - 1] ^= 0xff;
+    const last = body.length - 1;
+    body[last] = (body[last] ?? 0) ^ 0xff;
     expect(() => v.decrypt(`v1.${body.toString('base64')}`)).toThrow();
   });
 

@@ -1,3 +1,4 @@
+import { loadEnvFile } from './env.js';
 import { loadConfig } from './config.js';
 import { createContext } from './context.js';
 import { openDatabase, migrate } from '@nexus/db';
@@ -5,6 +6,8 @@ import { buildApp } from './app.js';
 import { hashPassword } from '@nexus/security';
 
 async function main(): Promise<void> {
+  const envFile = loadEnvFile();
+  if (envFile) console.log(`[nexus] loaded environment from ${envFile}`);
   const config = loadConfig();
   const db = openDatabase({ file: config.dbFile });
   const migration = migrate(db, config.migrationsDir);
