@@ -14,6 +14,8 @@ export interface AppContext {
   credentials: CredentialService;
   loginLimiter: RateLimiter;
   apiLimiter: RateLimiter;
+  /** Resolve the owner of a conversation or project (used by background task handlers). */
+  ownerOf: (conversationId: string | null) => string | null;
 }
 
 export function createContext(config: AppConfig, db: Db): AppContext {
@@ -27,5 +29,12 @@ export function createContext(config: AppConfig, db: Db): AppContext {
     credentials: new CredentialService(db, createVault(config.masterKey)),
     loginLimiter: new RateLimiter({ max: 12, windowMs: 5 * 60_000 }),
     apiLimiter: new RateLimiter({ max: 600, windowMs: 60_000 }),
+    ownerOf: (conversationId: string | null): string | null => {
+      if (!conversationId) return null;
+      const row = db.prepare('SELECT user_id FROM conversations WHERE id = ?').get(conversationId) as { user_id: string } | undefined;
+      if (row) return row.user_id;
+      const proj = db.prepare('SELECT user_id FROM projects WHERE id = ?').get(conversationId) as { user_id: string } | undefined;
+      return proj?.user_id ?? null;
+    },
   };
 }

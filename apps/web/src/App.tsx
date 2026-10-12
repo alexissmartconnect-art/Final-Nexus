@@ -7,9 +7,10 @@ import { LogsPage } from './pages/LogsPage.js';
 import { ChatPage } from './pages/ChatPage.js';
 import { ModelsPage } from './pages/ModelsPage.js';
 import { BudgetsPage } from './pages/BudgetsPage.js';
+import { TasksPage } from './pages/TasksPage.js';
 import { Orb } from './components/Orb.js';
 
-type SectionId = 'home' | 'chat' | 'models' | 'keys' | 'budgets' | 'logs' | 'coming';
+type SectionId = 'home' | 'chat' | 'models' | 'tasks' | 'keys' | 'budgets' | 'logs' | 'coming';
 
 interface Section { id: SectionId; label: string; phase?: string; render?: () => JSX.Element; adminOnly?: boolean }
 
@@ -19,7 +20,7 @@ const SECTIONS: Section[] = [
   { id: 'models', label: 'Modèles IA', render: () => <ModelsPage /> },
   { id: 'coming', label: 'Comparateur', phase: 'Phase 2' },
   { id: 'coming', label: 'Conseil IA', phase: 'Phase 4' },
-  { id: 'coming', label: 'Agents', phase: 'Phase 3' },
+  { id: 'tasks', label: 'Agents', render: () => <TasksPage /> },
   { id: 'coming', label: 'Web Factory', phase: 'Phase 5' },
   { id: 'coming', label: 'Projets', phase: 'Phase 5' },
   { id: 'coming', label: 'Bibliothèque', phase: 'Phase 8' },

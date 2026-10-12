@@ -22,7 +22,9 @@
     "@nexus/providers": "*",
     "@nexus/model-registry": "*",
     "@nexus/finops": "*",
-    "@nexus/router": "*"
+    "@nexus/router": "*",
+    "@nexus/agents": "*",
+    "@nexus/orchestrator": "*"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

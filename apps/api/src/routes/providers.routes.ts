@@ -45,5 +45,6 @@ declare module 'fastify' {
     providers?: ProviderService;
     cost?: import('@nexus/finops').CostEngine;
     router?: import('@nexus/router').SmartRouter;
+    chat?: import('../services/chat.service.js').ChatService;
   }
 }

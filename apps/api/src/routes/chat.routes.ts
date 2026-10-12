@@ -3,16 +3,12 @@ import { chatRequestSchema, isNexusError, routeExplainSchema, type PublicConvers
 import type { AppContext } from '../context.js';
 import { parse } from '../http/errors.js';
 import { requireAuth, requireCsrf } from '../http/security.js';
-import { ChatService } from '../services/chat.service.js';
-import type { CostEngine } from '@nexus/finops';
-import type { SmartRouter } from '@nexus/router';
+import type { ChatService } from '../services/chat.service.js';
 import type { ProviderService } from '../services/provider.service.js';
 
 export async function chatRoutes(
-  app: FastifyInstance, ctx: AppContext, providers: ProviderService,
-  router: SmartRouter, cost: CostEngine,
+  app: FastifyInstance, ctx: AppContext, providers: ProviderService, svc: ChatService,
 ): Promise<void> {
-  const svc = new ChatService(ctx, providers, router, cost);
 
   app.get('/api/conversations', async (req, reply) => {
     const a = requireAuth(req);
@@ -83,7 +79,7 @@ export async function chatRoutes(
     const a = requireAuth(req);
     const input = parse(routeExplainSchema, req.body);
     const models = providers.registry.list({ limit: 500 });
-    const decision = router.select(models, {
+    const decision = app.router!.select(models, {
       mode: input.routingMode, task: input.task, prompt: input.message,
       maxOutputTokens: input.maxOutputTokens, privacy: input.privacy,
       preferredModelId: input.modelId, chainLength: 5,
@@ -102,6 +98,7 @@ export async function chatRoutes(
 
   app.get('/api/usage', async (req, reply) => {
     const a = requireAuth(req);
+    const cost = app.cost!;
     return reply.send({
       ...cost.summary(a.userId),
       policies: cost.listPolicies(a.userId),

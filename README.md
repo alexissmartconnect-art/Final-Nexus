@@ -10,7 +10,7 @@ Built from an empty repository — there is no legacy NEXUS code in here.
 
 ---
 
-## Current status — Phase 0 delivered and verified
+## Current status — Phases 0-3 delivered and verified
 
 | Area | State | Proof |
 |---|---|---|
@@ -30,14 +30,17 @@ Built from an empty repository — there is no legacy NEXUS code in here.
 | Smart Router (8 modes) + routing dry run | ✅ Phase 2 | `packages/router/tests/smart-router.test.ts` (16 tests) |
 | Cost Engine: budgets, reservation, reconciliation | ✅ Phase 2 | `packages/finops/tests/cost-engine.test.ts` (17 tests) |
 | Acceptance test 5 (budget) & 6 (429 fallback) | ✅ Phase 2 | `apps/api/tests/budget-router.test.ts` (8 tests) |
-| Council, judge, orchestrator | ⛔ Phase 3-4 | reserved packages |
+| Central orchestrator: task DAG, retries, cancel, resume | ✅ Phase 3 | `packages/orchestrator/tests/orchestrator.test.ts` (13 tests) |
+| 17 configurable agents + registry | ✅ Phase 3 | `packages/agents/tests/registry.test.ts` (5 tests) |
+| Real multi-step execution (`POST /api/orchestrate`) | ✅ Phase 3 | `apps/api/tests/orchestration.test.ts` (9 tests) |
+| Council, judge | ⛔ Phase 4 | reserved packages |
 | Web Factory, runner, Playwright | ⛔ Phase 5-6 | reserved packages |
 | Deployment | ⛔ Phase 7 | reserved packages |
 
 `⛔` means **not implemented**. Nothing in the interface pretends otherwise: unimplemented
 sections are visible but disabled and labelled with their phase.
 
-Test suite: **148 tests, 18 files, all passing** (`npm test`).
+Test suite: **175 tests, 21 files, all passing** (`npm test`).
 
 ---
 

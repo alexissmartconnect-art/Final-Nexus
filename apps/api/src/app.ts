@@ -11,6 +11,8 @@ import { providerRoutes } from './routes/providers.routes.js';
 import { ProviderService } from './services/provider.service.js';
 import { chatRoutes } from './routes/chat.routes.js';
 import { budgetRoutes } from './routes/budget.routes.js';
+import { orchestrationRoutes } from './routes/orchestration.routes.js';
+import { ChatService } from './services/chat.service.js';
 import { CostEngine } from '@nexus/finops';
 import { SmartRouter } from '@nexus/router';
 
@@ -45,6 +47,8 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
   app.decorate('providers', providers);
   app.decorate('cost', cost);
   app.decorate('router', router);
+  const chat = new ChatService(ctx, providers, router, cost);
+  app.decorate('chat', chat);
 
   registerSecurityHeaders(app);
   registerRateLimit(app, ctx);
@@ -56,8 +60,9 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
     await metaRoutes(instance, ctx);
     await credentialRoutes(instance, ctx);
     await providerRoutes(instance, ctx, providers);
-    await chatRoutes(instance, ctx, providers, router, cost);
+    await chatRoutes(instance, ctx, providers, chat);
     await budgetRoutes(instance, ctx, cost);
+    await orchestrationRoutes(instance, ctx, chat);
   });
 
   return app;

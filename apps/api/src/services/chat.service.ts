@@ -196,6 +196,20 @@ export class ChatService {
     throw lastError instanceof NexusError ? lastError : new NexusError('provider_error', 'All model attempts failed');
   }
 
+  /**
+   * Open a conversation that will host an orchestration run (Phase 3).
+   * Public because the orchestrator runs outside a request/response cycle.
+   */
+  openConversation(userId: string, title: string, opts: { projectId?: string | null; routingMode?: string } = {}): string {
+    const id = newId('cnv');
+    const t = now();
+    this.ctx.db.prepare(
+      `INSERT INTO conversations (id, user_id, title, project_id, mode, routing_mode, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'chat', ?, ?, ?)`,
+    ).run(id, userId, title.slice(0, 160), opts.projectId ?? null, opts.routingMode ?? 'free_first', t, t);
+    return id;
+  }
+
   private createConversation(userId: string, input: ChatInput): string {
     const id = newId('cnv');
     const t = now();
