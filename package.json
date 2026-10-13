@@ -1,0 +1,28 @@
+{
+  "name": "nexus-omega",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NEXUS OMEGA - AI Operating System: multi-agent intelligence + universal web factory",
+  "engines": { "node": ">=22.5.0" },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev:api": "npm run dev -w @nexus/api",
+    "dev:web": "npm run dev -w @nexus/web",
+    "db:migrate": "npm run db:migrate -w @nexus/api",
+    "start": "npm run start -w @nexus/api"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}
